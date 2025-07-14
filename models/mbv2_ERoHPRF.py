@@ -53,7 +53,7 @@ class InvertedResidual(nn.Module):
             self.conv = nn.Sequential(
                 # dw
                 # nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
-                MultiConvBlock(hidden_dim, hidden_dim, [3], stride),
+                MultiConvBlock(hidden_dim, hidden_dim, [3, 5, 7], stride),
                 nn.ReLU6(),
                 # pw-linear
                 nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),
@@ -67,7 +67,7 @@ class InvertedResidual(nn.Module):
                 nn.ReLU6(inplace=True),
                 # dw
                 # nn.Conv2d(hidden_dim, hidden_dim, 3, stride, 1, groups=hidden_dim, bias=False),
-                MultiConvBlock(hidden_dim, hidden_dim, [3], stride),
+                MultiConvBlock(hidden_dim, hidden_dim, [3, 5, 7], stride),
                 nn.ReLU6(),
                 # pw-linear
                 nn.Conv2d(hidden_dim, oup, 1, 1, 0, bias=False),

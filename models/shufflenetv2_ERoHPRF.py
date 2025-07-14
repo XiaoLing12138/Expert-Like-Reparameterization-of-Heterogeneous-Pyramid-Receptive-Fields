@@ -54,7 +54,7 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(oup_inc),
                 nn.ReLU(inplace=True),
                 # dw
-                MultiConvBlock(oup_inc, oup_inc, [3], stride),
+                MultiConvBlock(oup_inc, oup_inc, [3, 5, 7], stride),
                 # pw-linear
                 nn.Conv2d(oup_inc, oup_inc, 1, 1, 0, bias=False),
                 nn.BatchNorm2d(oup_inc),
@@ -63,7 +63,7 @@ class InvertedResidual(nn.Module):
         else:
             self.banch1 = nn.Sequential(
                 # dw
-                MultiConvBlock(inp, inp, [3], stride),
+                MultiConvBlock(inp, inp, [3, 5, 7], stride),
                 # pw-linear
                 nn.Conv2d(inp, oup_inc, 1, 1, 0, bias=False),
                 nn.BatchNorm2d(oup_inc),
@@ -76,7 +76,7 @@ class InvertedResidual(nn.Module):
                 nn.BatchNorm2d(oup_inc),
                 nn.ReLU(inplace=True),
                 # dw
-                MultiConvBlock(oup_inc, oup_inc, [3], stride),
+                MultiConvBlock(oup_inc, oup_inc, [3, 5, 7], stride),
                 # pw-linear
                 nn.Conv2d(oup_inc, oup_inc, 1, 1, 0, bias=False),
                 nn.BatchNorm2d(oup_inc),

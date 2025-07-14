@@ -1,4 +1,3 @@
-import math
 import torch
 import torch.nn as nn
 
@@ -40,23 +39,43 @@ class AsymmConvBlock(nn.Module):
         self.depthwise = depthwise
 
         if depthwise:
-            self.convVe = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size, kernel_size-2),
-                                    stride=stride, padding=[padding, padding-1], groups=in_channels, bias=False)
-            self.bnVe = getBN(out_channels)
-            self.convHo = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size-2, kernel_size),
-                                    stride=stride, padding=[padding-1, padding], groups=in_channels, bias=False)
-            self.bnHo = getBN(out_channels)
+            self.convVe1 = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size, 1),
+                                     stride=stride, padding=[padding, 0], groups=in_channels, bias=False)
+            self.bnVe1 = getBN(out_channels)
+            self.convHo1 = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(1, kernel_size),
+                                     stride=stride, padding=[0, padding], groups=in_channels, bias=False)
+            self.bnHo1 = getBN(out_channels)
+            # ----------------------------------------------------------------
+            self.convVek = getConv2D(in_channels=in_channels, out_channels=out_channels,
+                                     kernel_size=(kernel_size, kernel_size - 2),
+                                     stride=stride, padding=[padding, padding - 1], groups=in_channels, bias=False)
+            self.bnVek = getBN(out_channels)
+            self.convHok = getConv2D(in_channels=in_channels, out_channels=out_channels,
+                                     kernel_size=(kernel_size - 2, kernel_size),
+                                     stride=stride, padding=[padding - 1, padding], groups=in_channels, bias=False)
+            self.bnHok = getBN(out_channels)
+            # ----------------------------------------------------------------
             self.convSq = getConv2D(in_channels=in_channels, out_channels=out_channels,
                                     kernel_size=(kernel_size, kernel_size), stride=stride, padding=[padding, padding],
                                     groups=in_channels, bias=False)
             self.bnSq = getBN(out_channels)
         else:
-            self.convVe = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size, kernel_size-2),
-                                    stride=stride, padding=[padding, padding-1], bias=False)
-            self.bnVe = getBN(out_channels)
-            self.convHo = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size-2, kernel_size),
-                                    stride=stride, padding=[padding-1, padding], bias=False)
-            self.bnHo = getBN(out_channels)
+            self.convVe1 = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(kernel_size, 1),
+                                     stride=stride, padding=[padding, 0], bias=False)
+            self.bnVe1 = getBN(out_channels)
+            self.convHo1 = getConv2D(in_channels=in_channels, out_channels=out_channels, kernel_size=(1, kernel_size),
+                                     stride=stride, padding=[0, padding], bias=False)
+            self.bnHo1 = getBN(out_channels)
+            # ----------------------------------------------------------------
+            self.convVek = getConv2D(in_channels=in_channels, out_channels=out_channels,
+                                     kernel_size=(kernel_size, kernel_size - 2),
+                                     stride=stride, padding=[padding, padding - 1], bias=False)
+            self.bnVek = getBN(out_channels)
+            self.convHok = getConv2D(in_channels=in_channels, out_channels=out_channels,
+                                     kernel_size=(kernel_size - 2, kernel_size),
+                                     stride=stride, padding=[padding - 1, padding], bias=False)
+            self.bnHok = getBN(out_channels)
+            # ----------------------------------------------------------------
             self.convSq = getConv2D(in_channels=in_channels, out_channels=out_channels,
                                     kernel_size=(kernel_size, kernel_size), stride=stride, padding=[padding, padding],
                                     bias=False)
@@ -67,20 +86,27 @@ class AsymmConvBlock(nn.Module):
 
     def forward(self, x):
         if not self.mergedFlag:
-            output = self.bnVe(self.convVe(x)) + self.bnHo(self.convHo(x)) + self.bnSq(self.convSq(x))
+            output = self.bnVe1(self.convVe1(x)) + self.bnVek(self.convVek(x)) + self.bnHo1(
+                self.convHo1(x)) + self.bnHok(self.convHok(x)) + self.bnSq(self.convSq(x))
         else:
             output = self.mergedConv(x)
 
         return output
 
     def mergeAsyKernels(self):
-        convVe_weight, convVe_bias = mergeBN(self.convVe, self.bnVe)
-        convHo_weight, convHo_bias = mergeBN(self.convHo, self.bnHo)
+        convVe1_weight, convVe1_bias = mergeBN(self.convVe1, self.bnVe1)
+        convHo1_weight, convHo1_bias = mergeBN(self.convHo1, self.bnHo1)
         convSq_weight, convSq_bias = mergeBN(self.convSq, self.bnSq)
 
-        kernelFuse(convSq_weight, convVe_weight)
-        kernelFuse(convSq_weight, convHo_weight)
-        convSq_bias = convSq_bias + convVe_bias + convHo_bias
+        kernelFuse(convSq_weight, convVe1_weight)
+        kernelFuse(convSq_weight, convHo1_weight)
+        convSq_bias = convSq_bias + convVe1_bias + convHo1_bias
+
+        convVek_weight, convVek_bias = mergeBN(self.convVek, self.bnVek)
+        convHok_weight, convHok_bias = mergeBN(self.convHok, self.bnHok)
+        kernelFuse(convSq_weight, convVek_weight)
+        kernelFuse(convSq_weight, convHok_weight)
+        convSq_bias = convSq_bias + convVek_bias + convHok_bias
 
         if self.depthwise:
             self.mergedConv = getConv2D(in_channels=self.in_channels, out_channels=self.out_channels,
@@ -95,10 +121,14 @@ class AsymmConvBlock(nn.Module):
         self.mergedConv.bias.data = convSq_bias
         self.mergedFlag = True
 
-        self.__delattr__('convVe')
-        self.__delattr__('bnVe')
-        self.__delattr__('convHo')
-        self.__delattr__('bnHo')
+        self.__delattr__('convVe1')
+        self.__delattr__('bnVe1')
+        self.__delattr__('convHo1')
+        self.__delattr__('bnHo1')
+        self.__delattr__('convVek')
+        self.__delattr__('bnVek')
+        self.__delattr__('convHok')
+        self.__delattr__('bnHok')
         self.__delattr__('convSq')
         self.__delattr__('bnSq')
 
@@ -143,7 +173,7 @@ class MultiConvBlock(nn.Module):
         self.conv_list[-1].mergeAsyKernels()
         conv_weight = self.conv_list[-1].mergedConv.weight.data
         conv_bias = self.conv_list[-1].mergedConv.bias.data
-        for index in range(len(self.conv_list)-1):
+        for index in range(len(self.conv_list) - 1):
             self.conv_list[index].mergeAsyKernels()
             kernelFuse(conv_weight, self.conv_list[index].mergedConv.weight)
             conv_bias += self.conv_list[index].mergedConv.bias
@@ -172,12 +202,12 @@ if __name__ == '__main__':
     net.eval()
     a = net(temp)
     print(a)
-    # print(net)
+    print(net)
     print("=====================")
     # print(net)
     net.mergeMulKernels()
     net.eval()
     b = net(temp)
     print(b)
-    print(a-b)
+    print(a - b)
     # print(net)
