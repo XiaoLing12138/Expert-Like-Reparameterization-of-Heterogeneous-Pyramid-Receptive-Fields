@@ -1,0 +1,39 @@
+train:
+  size: 224
+  cuda: 0
+  resume: False
+  pretrain: None
+  seed: 34718
+  lr: 0.005
+  batch-size: 32
+  epochs: 200
+  decay: !!float 1e-5
+  dataset: isic
+  data_path: 
+  num_worker: 6
+  num_classes: 7
+  mean:
+    - 0.485
+    - 0.456
+    - 0.406
+  std:
+    - 0.229
+    - 0.224
+    - 0.225
+model:
+  folder: checkpoints/isic
+  file: mixnet_ERoHPRF
+  caller: mixnet(num_classes=config["train"]["num_classes"])
+  name: mixnet_ERoHPRF
+log:
+  folder: logs/isic
+
+
+
+
+
+
+
+
+
+
